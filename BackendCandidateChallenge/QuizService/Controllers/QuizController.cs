@@ -80,6 +80,10 @@ public class QuizController : Controller
     [Route("{id}/questions")]
     public IActionResult PostQuestion(int id, [FromBody] QuestionCreateModel value)
     {
+        const string quizSql = "SELECT * FROM Quiz WHERE Id = @Id;";
+        var quiz = _connection.QuerySingleOrDefault<Quiz>(quizSql, new { Id = id });
+        if (quiz == null) return NotFound();
+
         const string sql = "INSERT INTO Question (Text, QuizId) VALUES(@Text, @QuizId); SELECT LAST_INSERT_ROWID();";
         var questionId = _connection.ExecuteScalar(sql, new { Text = value.Text, QuizId = id });
         return Created($"/api/quizzes/{id}/questions/{questionId}", null);
@@ -140,11 +144,30 @@ public class QuizController : Controller
         return NoContent();
     }
 
+    //POST api/quizzes/5/submit
+    [HttpPost("{id:int}/submit")]
+    public IActionResult SubmitAnswers([FromRoute] int id, [FromBody] SubmitQuizRequestModel model)
+    {
+        //TODO: Move to a handler file
+        var quiz = GetById(id);
+        if (quiz == null) return NotFound();
+
+        var submittedAnswers = (model.Answers ?? [])
+            .GroupBy(x => x.QuestionId)
+            .ToDictionary(y => y.Key, y => y.First().AnswerId);
+
+        var questions = quiz.Questions.Any() ? quiz.Questions.ToList() : Enumerable.Empty<QuizResponseModel.QuestionItem>().ToList();
+        var correctAnswers = questions.Count(x => submittedAnswers.TryGetValue(x.Id, out var picked) && picked == x.CorrectAnswerId);
+        var submittedQuiz = new SubmitQuizResponseModel(quiz.Id, questions.Count, correctAnswers);
+
+        return Ok(submittedQuiz);
+    }
+
     //TODO: Move the method to a handler file
     private QuizResponseModel GetById(int id)
     {
         const string quizSql = "SELECT * FROM Quiz WHERE Id = @Id;";
-        var quiz = _connection.QuerySingle<Quiz>(quizSql, new { Id = id });
+        var quiz = _connection.QuerySingleOrDefault<Quiz>(quizSql, new { Id = id });
         if (quiz == null) return null;
 
         const string questionsSql = "SELECT * FROM Question WHERE QuizId = @QuizId;";
