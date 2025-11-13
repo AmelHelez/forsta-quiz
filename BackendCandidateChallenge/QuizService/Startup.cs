@@ -26,6 +26,16 @@ public class Startup
         services.AddMvc();
         services.AddSingleton(InitializeDb());
         services.AddControllers();
+        services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(builder =>
+            {
+                builder
+                .WithOrigins("http://localhost:3000")
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+            });
+        });
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -35,6 +45,7 @@ public class Startup
         {
             app.UseDeveloperExceptionPage();
         }
+        app.UseCors();
         app.UseRouting();
         app.UseEndpoints(endpoints =>
         {
