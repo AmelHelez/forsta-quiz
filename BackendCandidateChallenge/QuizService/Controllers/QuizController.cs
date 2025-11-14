@@ -11,7 +11,7 @@ namespace QuizService.Controllers;
 [Route("api/quizzes")]
 public class QuizController : Controller
 {
-    //TODO: Move the logic from controller, apply CQRS pattern
+    //TODO: Move the logic from controller to a service, or apply CQRS pattern
     private readonly IDbConnection _connection;
 
     public QuizController(IDbConnection connection)
@@ -23,6 +23,7 @@ public class QuizController : Controller
     [HttpGet]
     public IEnumerable<QuizResponseModel> Get()
     {
+        // TODO: Create a QuizRepository for data access
         const string sql = "SELECT * FROM Quiz;";
         var quizzes = _connection.Query<Quiz>(sql);
         return quizzes.Select(quiz =>
@@ -35,9 +36,11 @@ public class QuizController : Controller
 
     // GET api/quizzes/5
     [HttpGet("{id}")]
+    // TODO: I prefer to return typed models instead of just "object"
     public object Get(int id)
     {
         var quiz = GetById(id);
+        // TODO: Return JSON error messages instead of NotFound()
         if (quiz == null) return NotFound();
 
         return quiz;
@@ -48,6 +51,7 @@ public class QuizController : Controller
     public IActionResult Post([FromBody] QuizCreateModel value)
     {
         //TODO: Add a try-catch block in case the new quiz cannot be added
+        // TODO: Avoid string interpolation in SQL queries
         var sql = $"INSERT INTO Quiz (Title) VALUES('{value.Title}'); SELECT LAST_INSERT_ROWID();";
         var id = _connection.ExecuteScalar(sql);
         return Created($"/api/quizzes/{id}", null);
@@ -80,6 +84,7 @@ public class QuizController : Controller
     [Route("{id}/questions")]
     public IActionResult PostQuestion(int id, [FromBody] QuestionCreateModel value)
     {
+        // TODO: Make sure the quiz exists before creating a new question
         const string quizSql = "SELECT * FROM Quiz WHERE Id = @Id;";
         var quiz = _connection.QuerySingleOrDefault<Quiz>(quizSql, new { Id = id });
         if (quiz == null) return NotFound();
@@ -116,6 +121,7 @@ public class QuizController : Controller
     [Route("{id}/questions/{qid}/answers")]
     public IActionResult PostAnswer(int id, int qid, [FromBody] AnswerCreateModel value)
     {
+        //TODO: Check if both quiz and question exist before creating the answer
         const string sql = "INSERT INTO Answer (Text, QuestionId) VALUES(@Text, @QuestionId); SELECT LAST_INSERT_ROWID();";
         var answerId = _connection.ExecuteScalar(sql, new { Text = value.Text, QuestionId = qid });
         return Created($"/api/quizzes/{id}/questions/{qid}/answers/{answerId}", null);

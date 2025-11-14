@@ -7,5 +7,6 @@ public class QuizCreateModel
         Title = title;
     }
 
+    // TODO: Add model validation
     public string Title { get; set; }
 }
